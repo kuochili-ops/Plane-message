@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>3D 飛機訊息拖曳互動 - 絕對可見強制版</title>
+    <title>𓃥 白六廣宣飛機</title>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700&family=Roboto:wght@400;700&family=Orbitron:wght@500;700&family=Pacifico&display=swap" rel="stylesheet">
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
@@ -20,11 +20,11 @@
         .status-dot { width: 8px; height: 8px; background-color: #00ff88; border-radius: 50%; box-shadow: 0 0 6px #00ff88; }
         
         .control-panel {
-            position: absolute; top: 75px; left: 15px; width: calc(100vw - 30px); max-width: 340px; z-index: 10;
+            position: absolute; top: 75px; left: 15px; width: calc(100vw - 30px); max-width: 360px; z-index: 10;
             background: rgba(18, 18, 22, 0.92); backdrop-filter: blur(15px);
             border: 1px solid rgba(255, 255, 255, 0.12); border-radius: 16px; padding: 20px;
             box-shadow: 0 16px 40px rgba(0,0,0,0.5); transition: transform 0.3s ease, opacity 0.3s ease; pointer-events: auto;
-            max-height: calc(100vh - 160px); overflow-y: auto;
+            max-height: calc(100vh - 100px); overflow-y: auto;
         }
         .control-panel.collapsed { transform: translateY(-120%) scale(0.95); opacity: 0; pointer-events: none; }
         
@@ -48,8 +48,11 @@
         .color-picker-wrapper { display: flex; align-items: center; gap: 8px; background: rgba(255, 255, 255, 0.06); padding: 8px; border-radius: 8px; border: 1px solid rgba(255, 255, 255, 0.1); }
         .color-picker-wrapper input[type="color"] { -webkit-appearance: none; border: none; width: 26px; height: 26px; border-radius: 4px; cursor: pointer; background: none; }
         .color-picker-wrapper span { font-size: 0.75rem; color: #ccc; }
-        .btn-submit { width: 100%; background: linear-gradient(135deg, #3b82f6, #1d4ed8); color: white; border: none; padding: 12px; border-radius: 8px; font-weight: 700; font-size: 0.9rem; cursor: pointer; margin-top: 6px; }
         
+        .action-btn {
+            width: 100%; background: linear-gradient(135deg, #3b82f6, #1d4ed8); color: white; border: none; padding: 12px; border-radius: 8px; font-weight: 700; font-size: 0.9rem; cursor: pointer; margin-top: 6px;
+        }
+
         .touch-hint {
             position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); z-index: 10;
             background: rgba(18, 18, 22, 0.8); backdrop-filter: blur(10px);
@@ -73,14 +76,14 @@
 
     <div id="loading">
         <div class="spinner"></div>
-        <p>正在初始化 3D 空間與渲染引擎...</p>
+        <p>正在載入 𓃥 白六廣宣飛機...</p>
     </div>
 
     <div id="canvas-container"></div>
 
     <div class="header-bar">
         <div class="status-dot"></div>
-        <h1>SkyBanner 3D</h1>
+        <h1>𓃥 白六廣宣飛機</h1>
     </div>
 
     <button class="toggle-btn" id="toggleBtn" title="選單">
@@ -95,11 +98,11 @@
         
         <div class="form-group">
             <label for="bannerText">顯示訊息文字</label>
-            <textarea id="bannerText" class="form-control">飛機拖曳訊息測試 ✨</textarea>
+            <textarea id="bannerText" class="form-control">𓃥 白六廣宣訊息測試 ✨</textarea>
         </div>
 
         <div class="form-group">
-            <label for="fontSelect">字型樣式</label>
+            <label for="fontSelect">Google 字型樣式</label>
             <select id="fontSelect" class="form-control">
                 <option value="'Noto Sans TC', sans-serif">思源黑體 (Noto Sans TC)</option>
                 <option value="'Roboto', sans-serif">Roboto</option>
@@ -127,7 +130,7 @@
             </div>
         </div>
 
-        <button class="btn-submit" id="updateBanner">更新拖曳布條</button>
+        <button class="action-btn" id="updateBanner">更新拖曳布條</button>
     </div>
 
     <div class="touch-hint">
@@ -148,174 +151,277 @@
         import * as THREE from 'three';
         import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
         import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
-        import { CSS3DRenderer, CSS3DObject } from 'three/addons/renderers/CSS3DRenderer.js';
 
         const container = document.getElementById('canvas-container');
         
         const scene = new THREE.Scene();
         scene.background = new THREE.Color(0x0b0b0e);
 
-        // 超強力全方位燈光
-        const ambientLight = new THREE.AmbientLight(0xffffff, 2.5);
+        const ambientLight = new THREE.AmbientLight(0xffffff, 2.0);
         scene.add(ambientLight);
 
-        const dirLight = new THREE.DirectionalLight(0xffffff, 3.5);
+        const dirLight = new THREE.DirectionalLight(0xffffff, 3.0);
         dirLight.position.set(10, 30, 20);
         scene.add(dirLight);
 
+        // 將攝影機拉遠（Z 軸從 16 增加到 24），確保一開始就能完整看見整架飛機與後方拖曳布條
         const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
-        camera.position.set(0, 5, 16);
+        camera.position.set(0.0, 4.0, 24.0);
 
         const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
         renderer.setSize(window.innerWidth, window.innerHeight);
         renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
         container.appendChild(renderer.domElement);
 
-        const cssRenderer = new CSS3DRenderer();
-        cssRenderer.setSize(window.innerWidth, window.innerHeight);
-        cssRenderer.domElement.style.position = 'absolute';
-        cssRenderer.domElement.style.top = '0';
-        cssRenderer.domElement.style.pointerEvents = 'none';
-        container.appendChild(cssRenderer.domElement);
-
         const controls = new OrbitControls(camera, renderer.domElement);
+        controls.target.set(0.0, 0, 0);
         controls.enableDamping = true;
         controls.dampingFactor = 0.05;
         controls.rotateSpeed = 0.8;
         controls.zoomSpeed = 1.0;
         controls.panSpeed = 0.8;
-        controls.touches = {
-            ONE: THREE.TOUCH.ROTATE,
-            TWO: THREE.TOUCH.DOLLY_PAN
-        };
+        controls.update();
 
-        // 建立主群組
         const worldGroup = new THREE.Group();
         scene.add(worldGroup);
 
-        // 1. 建立 HTML 拖曳布條
-        const bannerElement = document.createElement('div');
-        bannerElement.innerHTML = `
-            <div style="display: flex; align-items: center; pointer-events: auto; cursor: pointer;" id="bannerWrapper">
-                <div style="width: 70px; height: 3px; background: rgba(255,255,255,0.9); box-shadow: 0 0 6px rgba(0,0,0,0.8);"></div>
-                <div id="bannerContent" style="padding: 12px 20px; border-radius: 6px; box-shadow: 0 10px 30px rgba(0,0,0,0.6); border: 1px solid rgba(255,255,255,0.3); font-family: 'Noto Sans TC', sans-serif; font-size: 20px; color: #ffffff; background-color: #e11d48; white-space: nowrap;">
-                    飛機拖曳訊息測試 ✨
-                </div>
-            </div>
-        `;
-        const bannerCSSObject = new CSS3DObject(bannerElement);
-        bannerCSSObject.scale.set(0.08, 0.08, 0.08);
-        bannerCSSObject.position.set(-3.5, 0, 0);
-        worldGroup.add(bannerCSSObject);
+        const towingGroup = new THREE.Group();
+        worldGroup.add(towingGroup);
 
-        // 2. 建立強制保證看得見的備用幾何飛機（紅色雙翼造型），確保 GLB 讀取失敗或路徑不對時畫面絕對有飛機
-        const planeGroup = new THREE.Group();
-        
-        const bodyGeo = new THREE.CylinderGeometry(0.4, 0.4, 3.5, 16);
-        bodyGeo.rotateX(Math.PI / 2);
-        const bodyMat = new THREE.MeshStandardMaterial({ color: 0xdc2626, roughness: 0.3 });
-        const bodyMesh = new THREE.Mesh(bodyGeo, bodyMat);
-        planeGroup.add(bodyMesh);
+        // 雲朵系統 (將雲朵範圍拉大且減低密度，避免剛好擋住整架飛機)
+        const cloudsGroup = new THREE.Group();
+        scene.add(cloudsGroup);
 
-        const wingGeo = new THREE.BoxGeometry(4.5, 0.1, 1.2);
-        const wingMat = new THREE.MeshStandardMaterial({ color: 0xef4444, roughness: 0.3 });
-        const topWing = new THREE.Mesh(wingGeo, wingMat);
-        topWing.position.set(0, 0.6, 0);
-        planeGroup.add(topWing);
+        const cloudGeo = new THREE.DodecahedronGeometry(1.5, 1);
+        const cloudMat = new THREE.MeshStandardMaterial({
+            color: 0xffffff,
+            roughness: 0.9,
+            transparent: true,
+            opacity: 0.18
+        });
 
-        const botWing = new THREE.Mesh(wingGeo, wingMat);
-        botWing.position.set(0, -0.6, 0);
-        planeGroup.add(botWing);
+        const clouds = [];
+        for (let i = 0; i < 6; i++) {
+            const cloud = new THREE.Group();
+            for (let j = 0; j < 3; j++) {
+                const puff = new THREE.Mesh(cloudGeo, cloudMat);
+                puff.position.set((Math.random() - 0.5) * 2, (Math.random() - 0.5) * 0.8, (Math.random() - 0.5) * 1.5);
+                puff.scale.set(1 + Math.random() * 0.8, 0.6 + Math.random() * 0.4, 0.8 + Math.random() * 0.5);
+                cloud.add(puff);
+            }
+            cloud.position.set(
+                (Math.random() - 0.5) * 45,
+                (Math.random() - 0.5) * 10 - 2,
+                -15 - Math.random() * 25
+            );
+            const s = 1.5 + Math.random() * 2.0;
+            cloud.scale.set(s, s * 0.7, s);
+            cloudsGroup.add(cloud);
+            clouds.push({
+                mesh: cloud,
+                speed: 0.015 + Math.random() * 0.02
+            });
+        }
 
-        // 預先將備用飛機加入場景群組
-        worldGroup.add(planeGroup);
+        const propellerPivot = new THREE.Group();
+        propellerPivot.position.set(-4.5, 0, 0);
+        towingGroup.add(propellerPivot);
 
-        // 3. 嘗試讀取您的 GLB 檔案，如果成功載入則替換掉備用飛機
+        function createFallbackPlane() {
+            const plane = new THREE.Group();
+            plane.rotation.y = Math.PI * 1.5;
+
+            const bodyMat = new THREE.MeshStandardMaterial({ color: 0xdc2626, roughness: 0.3 });
+            const body = new THREE.Mesh(new THREE.ConeGeometry(0.5, 4, 16), bodyMat);
+            body.rotation.x = Math.PI / 2;
+            plane.add(body);
+
+            const wingMat = new THREE.MeshStandardMaterial({ color: 0xef4444, roughness: 0.3 });
+            const topWing = new THREE.Mesh(new THREE.BoxGeometry(5, 0.1, 1.2), wingMat);
+            topWing.position.set(0, 0.6, 0);
+            plane.add(topWing);
+
+            const botWing = new THREE.Mesh(new THREE.BoxGeometry(4, 0.1, 1.0), wingMat);
+            botWing.position.set(0, -0.4, 0);
+            plane.add(botWing);
+
+            const tailWing = new THREE.Mesh(new THREE.BoxGeometry(0.1, 1.2, 1), wingMat);
+            tailWing.position.set(0, 0.4, -1.8);
+            plane.add(tailWing);
+
+            return plane;
+        }
+
+        let airplaneModel = createFallbackPlane();
+        airplaneModel.scale.set(1.5, 1.5, 1.5);
+        airplaneModel.position.set(-4.5, 0, 0);
+        towingGroup.add(airplaneModel);
+
+        const tailAnchorPos = new THREE.Vector3(-3.784, 0.313, -0.182);
+
+        const ropeLength = 0.3125;
+        const ropeGeo = new THREE.CylinderGeometry(0.02, 0.02, ropeLength, 8);
+        ropeGeo.rotateZ(Math.PI / 2);
+        const ropeMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+        const rope = new THREE.Mesh(ropeGeo, ropeMat);
+        towingGroup.add(rope);
+
+        const canvas = document.createElement('canvas');
+        canvas.height = 64; 
+        const ctx = canvas.getContext('2d');
+
+        let bannerMesh = null;
+        let originalPositions = [];
+        let bannerWidth = 4.5;
+        const bannerHeight = 0.55; 
+
+        function rebuildBanner(text = "𓃥 白六廣宣訊息測試 ✨", textColor = "#ffffff", bgColor = "#e11d48", fontSizeVal = "20", fontFamily = "sans-serif") {
+            ctx.font = `bold ${fontSizeVal * 2}px ${fontFamily}`;
+            const textMetrics = ctx.measureText(text);
+            const textPixelWidth = Math.max(textMetrics.width + 80, 256);
+            canvas.width = textPixelWidth;
+
+            ctx.fillStyle = bgColor;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            ctx.strokeStyle = "rgba(255,255,255,0.4)";
+            ctx.lineWidth = 6;
+            ctx.strokeRect(0, 0, canvas.width, canvas.height);
+
+            ctx.fillStyle = textColor;
+            ctx.font = `bold ${fontSizeVal * 2}px ${fontFamily}`;
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            ctx.fillText(text, canvas.width / 2, canvas.height / 2);
+
+            const bannerTexture = new THREE.CanvasTexture(canvas);
+            bannerTexture.needsUpdate = true;
+
+            bannerWidth = Math.max(text.length * 0.35, 2.5);
+
+            if (bannerMesh) {
+                towingGroup.remove(bannerMesh);
+                bannerMesh.geometry.dispose();
+            }
+
+            const bannerGeo = new THREE.PlaneGeometry(bannerWidth, bannerHeight, 20, 5);
+            bannerGeo.translate(bannerWidth / 2, 0, 0);
+
+            const bannerMat = new THREE.MeshStandardMaterial({ 
+                map: bannerTexture, 
+                side: THREE.DoubleSide,
+                roughness: 0.5 
+            });
+            bannerMesh = new THREE.Mesh(bannerGeo, bannerMat);
+            towingGroup.add(bannerMesh);
+
+            originalPositions = [];
+            const posAttr = bannerMesh.geometry.attributes.position;
+            for (let i = 0; i < posAttr.count; i++) {
+                originalPositions.push(posAttr.getX(i), posAttr.getY(i), posAttr.getZ(i));
+            }
+        }
+
+        rebuildBanner();
+
         const loader = new GLTFLoader();
         loader.load(
             'stylized_ww1_plane.glb',
             (gltf) => {
                 const glbModel = gltf.scene;
-
-                glbModel.traverse((child) => {
-                    if (child.isMesh) {
-                        child.castShadow = true;
-                        child.receiveShadow = true;
-                        if (child.material) {
-                            child.material.side = THREE.DoubleSide;
-                            child.material.roughness = 0.4;
-                        }
-                    }
-                });
-
-                // 自動置中與縮放
                 const box = new THREE.Box3().setFromObject(glbModel);
                 const center = box.getCenter(new THREE.Vector3());
                 const size = box.getSize(new THREE.Vector3());
                 glbModel.position.sub(center);
 
                 const maxDim = Math.max(size.x, size.y, size.z);
-                const scaleFactor = 4.5 / (maxDim > 0 ? maxDim : 1);
+                const scaleFactor = 6.0 / (maxDim > 0 ? maxDim : 1);
                 glbModel.scale.multiplyScalar(scaleFactor);
 
-                // 移除備用幾何，換上真實的 GLB 模型
-                planeGroup.clear();
-                planeGroup.add(glbModel);
+                glbModel.rotation.y = Math.PI * 1.5;
 
-                // 依據模型大小精準對齊布條位置
-                bannerCSSObject.position.set(- (size.x * scaleFactor * 0.5) - 3.0, 0, 0);
-                
-                console.log('GLB 模型載入成功並已替換！');
+                towingGroup.remove(airplaneModel);
+                airplaneModel = glbModel;
+                airplaneModel.position.set(-4.5, 0, 0);
+                towingGroup.add(airplaneModel);
             },
             undefined,
             (error) => {
-                console.warn('無法載入 GLB 檔案，已自動使用內建 3D 飛機模型替代:', error);
+                console.log('使用內建 3D 飛機模型。');
             }
         );
 
-        // 移除載入遮罩
         setTimeout(() => {
             const loaderEl = document.getElementById('loading');
             if (loaderEl) {
                 loaderEl.style.opacity = '0';
                 setTimeout(() => loaderEl.remove(), 500);
             }
-        }, 600);
+        }, 500);
 
-        // UI 互動控制
         const controlPanel = document.getElementById('controlPanel');
         document.getElementById('toggleBtn').addEventListener('click', () => controlPanel.classList.toggle('collapsed'));
         document.getElementById('closePanel').addEventListener('click', () => controlPanel.classList.add('collapsed'));
 
         const bannerText = document.getElementById('bannerText');
         const fontSelect = document.getElementById('fontSelect');
-        const fontSize = document.getElementById('fontSize');
-        const textColor = document.getElementById('textColor');
-        const bgColor = document.getElementById('bgColor');
-        const bannerContent = document.getElementById('bannerContent');
+        const fontSizeInput = document.getElementById('fontSize');
+        const textColorInput = document.getElementById('textColor');
+        const bgColorInput = document.getElementById('bgColor');
 
         document.getElementById('updateBanner').addEventListener('click', () => {
-            bannerContent.textContent = bannerText.value || 'SkyBanner';
-            bannerContent.style.fontFamily = fontSelect.value;
-            bannerContent.style.fontSize = fontSize.value + 'px';
-            bannerContent.style.color = textColor.value;
-            bannerContent.style.backgroundColor = bgColor.value;
+            rebuildBanner(
+                bannerText.value || '𓃥 白六廣宣訊息',
+                textColorInput.value,
+                bgColorInput.value,
+                fontSizeInput.value,
+                fontSelect.value
+            );
             controlPanel.classList.add('collapsed');
         });
-
-        bannerContent.addEventListener('click', () => controlPanel.classList.remove('collapsed'));
 
         const clock = new THREE.Clock();
         function animate() {
             requestAnimationFrame(animate);
             const t = clock.getElapsedTime();
+
             if (worldGroup) {
                 worldGroup.position.y = Math.sin(t * 2) * 0.15;
                 worldGroup.rotation.z = Math.sin(t * 1.5) * 0.03;
             }
+
+            // 雲朵漂移
+            clouds.forEach(c => {
+                c.mesh.position.x += c.speed;
+                if (c.mesh.position.x > 30) {
+                    c.mesh.position.x = -30;
+                    c.mesh.position.y = (Math.random() - 0.5) * 10 - 2;
+                }
+            });
+
+            rope.position.set(tailAnchorPos.x + ropeLength / 2, tailAnchorPos.y, tailAnchorPos.z);
+            if (bannerMesh) {
+                bannerMesh.position.set(tailAnchorPos.x + ropeLength, tailAnchorPos.y, tailAnchorPos.z);
+            }
+
+            if (bannerMesh && originalPositions.length > 0) {
+                const posAttr = bannerMesh.geometry.attributes.position;
+                for (let i = 0; i < posAttr.count; i++) {
+                    const ox = originalPositions[i * 3];
+                    const oy = originalPositions[i * 3 + 1];
+                    const oz = originalPositions[i * 3 + 2];
+
+                    const waveFactor = ox / bannerWidth; 
+                    const waveZ = Math.sin(t * 6 - ox * 2.5) * 0.15 * waveFactor;
+                    const waveY = Math.cos(t * 4 - ox * 1.5) * 0.08 * waveFactor;
+
+                    posAttr.setXYZ(i, ox, oy + waveY, oz + waveZ);
+                }
+                posAttr.needsUpdate = true;
+            }
+
             controls.update();
             renderer.render(scene, camera);
-            cssRenderer.render(scene, camera);
         }
         animate();
 
@@ -323,7 +429,6 @@
             camera.aspect = window.innerWidth / window.innerHeight;
             camera.updateProjectionMatrix();
             renderer.setSize(window.innerWidth, window.innerHeight);
-            cssRenderer.setSize(window.innerWidth, window.innerHeight);
         });
     </script>
 </body>
