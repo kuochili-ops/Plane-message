@@ -164,7 +164,7 @@
         dirLight.position.set(10, 30, 20);
         scene.add(dirLight);
 
-        // 將攝影機拉遠（Z 軸從 16 增加到 24），確保一開始就能完整看見整架飛機與後方拖曳布條
+        // 起始畫面視角設定（完美涵蓋飛機與布條）
         const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
         camera.position.set(0.0, 4.0, 24.0);
 
@@ -188,7 +188,7 @@
         const towingGroup = new THREE.Group();
         worldGroup.add(towingGroup);
 
-        // 雲朵系統 (將雲朵範圍拉大且減低密度，避免剛好擋住整架飛機)
+        // 雲朵系統
         const cloudsGroup = new THREE.Group();
         scene.add(cloudsGroup);
 
@@ -222,10 +222,6 @@
                 speed: 0.015 + Math.random() * 0.02
             });
         }
-
-        const propellerPivot = new THREE.Group();
-        propellerPivot.position.set(-4.5, 0, 0);
-        towingGroup.add(propellerPivot);
 
         function createFallbackPlane() {
             const plane = new THREE.Group();
@@ -324,6 +320,9 @@
 
         rebuildBanner();
 
+        // 用於處理模型內建動畫（如螺旋槳轉動）的變數
+        let mixer = null;
+
         const loader = new GLTFLoader();
         loader.load(
             'stylized_ww1_plane.glb',
@@ -344,6 +343,14 @@
                 airplaneModel = glbModel;
                 airplaneModel.position.set(-4.5, 0, 0);
                 towingGroup.add(airplaneModel);
+
+                // 檢查並播放模型內建的動畫（支援螺旋槳等轉動效果）
+                if (gltf.animations && gltf.animations.length > 0) {
+                    mixer = new THREE.AnimationMixer(airplaneModel);
+                    gltf.animations.forEach((clip) => {
+                        mixer.clipAction(clip).play();
+                    });
+                }
             },
             undefined,
             (error) => {
@@ -383,7 +390,13 @@
         const clock = new THREE.Clock();
         function animate() {
             requestAnimationFrame(animate);
+            const delta = clock.getDelta();
             const t = clock.getElapsedTime();
+
+            // 更新模型內建動畫（讓螺旋槳轉動）
+            if (mixer) {
+                mixer.update(delta);
+            }
 
             if (worldGroup) {
                 worldGroup.position.y = Math.sin(t * 2) * 0.15;
