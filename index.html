@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>3D 飛機訊息拖曳互動 - 手機觸控友善版</title>
+    <title>3D 飛機訊息拖曳互動 - 修正載入路徑版</title>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700&family=Roboto:wght@400;700&family=Orbitron:wght@500;700&family=Pacifico&display=swap" rel="stylesheet">
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
@@ -50,7 +50,6 @@
         .color-picker-wrapper span { font-size: 0.75rem; color: #ccc; }
         .btn-submit { width: 100%; background: linear-gradient(135deg, #3b82f6, #1d4ed8); color: white; border: none; padding: 12px; border-radius: 8px; font-weight: 700; font-size: 0.9rem; cursor: pointer; margin-top: 6px; }
         
-        /* 手機觸控提示面板 */
         .touch-hint {
             position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); z-index: 10;
             background: rgba(18, 18, 22, 0.8); backdrop-filter: blur(10px);
@@ -156,10 +155,10 @@
         const scene = new THREE.Scene();
         scene.background = new THREE.Color(0x0b0b0e);
 
-        const ambientLight = new THREE.AmbientLight(0xffffff, 1.2);
+        const ambientLight = new THREE.AmbientLight(0xffffff, 1.5);
         scene.add(ambientLight);
 
-        const dirLight = new THREE.DirectionalLight(0xffffff, 2.0);
+        const dirLight = new THREE.DirectionalLight(0xffffff, 2.5);
         dirLight.position.set(10, 20, 15);
         scene.add(dirLight);
 
@@ -178,14 +177,12 @@
         cssRenderer.domElement.style.pointerEvents = 'none';
         container.appendChild(cssRenderer.domElement);
 
-        // 針對手機觸控最佳化的 OrbitControls
         const controls = new OrbitControls(camera, renderer.domElement);
         controls.enableDamping = true;
         controls.dampingFactor = 0.05;
         controls.rotateSpeed = 0.8;
         controls.zoomSpeed = 1.0;
         controls.panSpeed = 0.8;
-        // 確保手機雙指操作順暢
         controls.touches = {
             ONE: THREE.TOUCH.ROTATE,
             TWO: THREE.TOUCH.DOLLY_PAN
@@ -195,7 +192,6 @@
         gridHelper.position.y = -2;
         scene.add(gridHelper);
 
-        // 建立 HTML 布條
         const bannerElement = document.createElement('div');
         bannerElement.innerHTML = `
             <div style="display: flex; align-items: center; pointer-events: auto; cursor: pointer;" id="bannerWrapper">
@@ -212,8 +208,11 @@
         let airplaneModel = null;
         const loader = new GLTFLoader();
 
+        // 嘗試相對路徑與絕對路徑相容讀取
+        const modelPath = './stylized_ww1_plane.glb';
+
         loader.load(
-            'stylized_ww1_plane.glb',
+            modelPath,
             (gltf) => {
                 airplaneModel = gltf.scene;
 
@@ -253,15 +252,22 @@
                 loaderEl.style.opacity = '0';
                 setTimeout(() => loaderEl.remove(), 500);
             },
-            undefined,
+            (xhr) => {
+                if (xhr.total) {
+                    const percent = Math.round((xhr.loaded / xhr.total) * 100);
+                    document.querySelector('#loading p').textContent = `載入 3D 模型中... (${percent}%)`;
+                }
+            },
             (error) => {
                 console.error('載入模型錯誤：', error);
-                document.querySelector('#loading p').innerHTML = `無法載入 <b>stylized_ww1_plane.glb</b>。<br>請確認檔案是否與 index.html 放在同一目錄。`;
+                document.querySelector('#loading p').innerHTML = `
+                    <span style="color:#ef4444;">找不到或無法載入 <b>stylized_ww1_plane.glb</b></span><br>
+                    <span style="font-size:0.8rem; color:#a0a0b2;">請檢查檔名大小寫是否完全相符，或是確認是否透過本地伺服器 (如 Live Server) 執行。</span>
+                `;
                 document.querySelector('.spinner').style.display = 'none';
             }
         );
 
-        // UI 互動控制
         const controlPanel = document.getElementById('controlPanel');
         document.getElementById('toggleBtn').addEventListener('click', () => controlPanel.classList.toggle('collapsed'));
         document.getElementById('closePanel').addEventListener('click', () => controlPanel.classList.add('collapsed'));
@@ -279,7 +285,7 @@
             bannerContent.style.fontSize = fontSize.value + 'px';
             bannerContent.style.color = textColor.value;
             bannerContent.style.backgroundColor = bgColor.value;
-            controlPanel.classList.add('collapsed'); // 更新後自動收合面板以便觀看
+            controlPanel.classList.add('collapsed');
         });
 
         bannerContent.addEventListener('click', () => controlPanel.classList.remove('collapsed'));
@@ -297,9 +303,6 @@
             cssRenderer.render(scene, camera);
         }
         animate();
-
-        window.innerWidth = window.innerWidth;
-        window.innerHeight = window.innerHeight;
 
         window.addEventListener('resize', () => {
             camera.aspect = window.innerWidth / window.innerHeight;
