@@ -2,73 +2,89 @@
 <html lang="zh-Hant">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>3D 飛機訊息拖曳互動展示 - 網格除錯版</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>3D 飛機訊息拖曳互動 - 手機觸控友善版</title>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700&family=Roboto:wght@400;700&family=Orbitron:wght@500;700&family=Pacifico&display=swap" rel="stylesheet">
     <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { font-family: 'Noto Sans TC', sans-serif; background-color: #0b0b0e; color: #e0e0e6; overflow: hidden; width: 100vw; height: 100vh; }
-        #canvas-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; }
+        * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+        body { font-family: 'Noto Sans TC', sans-serif; background-color: #0b0b0e; color: #e0e0e6; overflow: hidden; width: 100vw; height: 100vh; position: fixed; }
+        #canvas-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; touch-action: none; }
+        
         .header-bar {
-            position: absolute; top: 20px; left: 20px; z-index: 10;
+            position: absolute; top: 15px; left: 15px; z-index: 10;
             background: rgba(18, 18, 22, 0.85); backdrop-filter: blur(10px);
-            padding: 12px 20px; border-radius: 12px; border: 1px solid rgba(255, 255, 255, 0.1);
-            display: flex; align-items: center; gap: 12px; box-shadow: 0 8px 32px rgba(0,0,0,0.5); pointer-events: auto;
+            padding: 10px 16px; border-radius: 12px; border: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex; align-items: center; gap: 10px; box-shadow: 0 8px 32px rgba(0,0,0,0.5); pointer-events: auto;
         }
-        .header-bar h1 { font-size: 1.1rem; font-weight: 700; color: #fff; }
-        .status-dot { width: 10px; height: 10px; background-color: #00ff88; border-radius: 50%; box-shadow: 0 0 8px #00ff88; }
+        .header-bar h1 { font-size: 0.95rem; font-weight: 700; color: #fff; white-space: nowrap; }
+        .status-dot { width: 8px; height: 8px; background-color: #00ff88; border-radius: 50%; box-shadow: 0 0 6px #00ff88; }
+        
         .control-panel {
-            position: absolute; top: 85px; left: 20px; width: 340px; z-index: 10;
-            background: rgba(18, 18, 22, 0.9); backdrop-filter: blur(15px);
-            border: 1px solid rgba(255, 255, 255, 0.12); border-radius: 16px; padding: 24px;
+            position: absolute; top: 75px; left: 15px; width: calc(100vw - 30px); max-width: 340px; z-index: 10;
+            background: rgba(18, 18, 22, 0.92); backdrop-filter: blur(15px);
+            border: 1px solid rgba(255, 255, 255, 0.12); border-radius: 16px; padding: 20px;
             box-shadow: 0 16px 40px rgba(0,0,0,0.5); transition: transform 0.3s ease, opacity 0.3s ease; pointer-events: auto;
+            max-height: calc(100vh - 160px); overflow-y: auto;
         }
-        .control-panel.collapsed { transform: translateX(-370px); opacity: 0; pointer-events: none; }
+        .control-panel.collapsed { transform: translateY(-120%) scale(0.95); opacity: 0; pointer-events: none; }
+        
         .toggle-btn {
-            position: absolute; top: 85px; left: 20px; z-index: 9;
+            position: absolute; top: 75px; left: 15px; z-index: 9;
             background: rgba(18, 18, 22, 0.9); backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.12); color: #fff; width: 44px; height: 44px;
+            border: 1px solid rgba(255, 255, 255, 0.12); color: #fff; width: 42px; height: 42px;
             border-radius: 12px; display: flex; align-items: center; justify-content: center;
             cursor: pointer; box-shadow: 0 8px 24px rgba(0,0,0,0.4); pointer-events: auto;
         }
-        .panel-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding-bottom: 12px; border-bottom: 1px solid rgba(255,255,255,0.1); }
-        .panel-header h2 { font-size: 1rem; color: #fff; font-weight: 700; }
-        .close-panel { background: none; border: none; color: #8a8a9e; cursor: pointer; font-size: 1.2rem; }
-        .form-group { margin-bottom: 16px; }
-        .form-group label { display: block; font-size: 0.85rem; color: #a0a0b2; margin-bottom: 6px; }
-        .form-control { width: 100%; background: rgba(255, 255, 255, 0.06); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 8px; padding: 10px 14px; color: #fff; font-size: 0.9rem; outline: none; }
-        textarea.form-control { resize: vertical; min-height: 60px; }
-        .color-pickers { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-        .color-picker-wrapper { display: flex; align-items: center; gap: 8px; background: rgba(255, 255, 255, 0.06); padding: 6px 10px; border-radius: 8px; border: 1px solid rgba(255, 255, 255, 0.1); }
-        .color-picker-wrapper input[type="color"] { -webkit-appearance: none; border: none; width: 24px; height: 24px; border-radius: 4px; cursor: pointer; background: none; }
-        .color-picker-wrapper span { font-size: 0.8rem; color: #ccc; }
-        .btn-submit { width: 100%; background: linear-gradient(135deg, #3b82f6, #1d4ed8); color: white; border: none; padding: 12px; border-radius: 8px; font-weight: 700; cursor: pointer; margin-top: 8px; }
         
+        .panel-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; padding-bottom: 10px; border-bottom: 1px solid rgba(255,255,255,0.1); }
+        .panel-header h2 { font-size: 0.95rem; color: #fff; font-weight: 700; }
+        .close-panel { background: none; border: none; color: #8a8a9e; cursor: pointer; font-size: 1.4rem; padding: 4px 8px; }
+        
+        .form-group { margin-bottom: 14px; }
+        .form-group label { display: block; font-size: 0.8rem; color: #a0a0b2; margin-bottom: 6px; }
+        .form-control { width: 100%; background: rgba(255, 255, 255, 0.06); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 8px; padding: 10px; color: #fff; font-size: 0.9rem; outline: none; }
+        textarea.form-control { resize: none; height: 55px; }
+        .color-pickers { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .color-picker-wrapper { display: flex; align-items: center; gap: 8px; background: rgba(255, 255, 255, 0.06); padding: 8px; border-radius: 8px; border: 1px solid rgba(255, 255, 255, 0.1); }
+        .color-picker-wrapper input[type="color"] { -webkit-appearance: none; border: none; width: 26px; height: 26px; border-radius: 4px; cursor: pointer; background: none; }
+        .color-picker-wrapper span { font-size: 0.75rem; color: #ccc; }
+        .btn-submit { width: 100%; background: linear-gradient(135deg, #3b82f6, #1d4ed8); color: white; border: none; padding: 12px; border-radius: 8px; font-weight: 700; font-size: 0.9rem; cursor: pointer; margin-top: 6px; }
+        
+        /* 手機觸控提示面板 */
+        .touch-hint {
+            position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); z-index: 10;
+            background: rgba(18, 18, 22, 0.8); backdrop-filter: blur(10px);
+            padding: 8px 16px; border-radius: 20px; border: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex; gap: 12px; font-size: 0.75rem; color: #a0a0b2; white-space: nowrap; pointer-events: none;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+        }
+        .touch-hint span { color: #fff; font-weight: 600; }
+
         #loading {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: #0b0b0e; z-index: 100; display: flex; flex-direction: column;
             justify-content: center; align-items: center; gap: 16px; transition: opacity 0.5s ease;
         }
-        .spinner { width: 48px; height: 48px; border: 4px solid rgba(255,255,255,0.1); border-top-color: #3b82f6; border-radius: 50%; animation: spin 1s linear infinite; }
+        .spinner { width: 44px; height: 44px; border: 4px solid rgba(255,255,255,0.1); border-top-color: #3b82f6; border-radius: 50%; animation: spin 1s linear infinite; }
         @keyframes spin { to { transform: rotate(360deg); } }
-        #loading p { color: #a0a0b2; font-size: 0.95rem; }
+        #loading p { color: #a0a0b2; font-size: 0.9rem; text-align: center; padding: 0 20px; }
     </style>
 </head>
 <body>
 
     <div id="loading">
         <div class="spinner"></div>
-        <p>正在載入 3D 模型與建立除錯網格...</p>
+        <p>正在載入 3D 模型與手機觸控模組...</p>
     </div>
 
     <div id="canvas-container"></div>
 
     <div class="header-bar">
         <div class="status-dot"></div>
-        <h1>SkyBanner 3D - 模型除錯與網格版</h1>
+        <h1>SkyBanner 3D</h1>
     </div>
 
-    <button class="toggle-btn" id="toggleBtn" title="開啟/收合設定面板">
+    <button class="toggle-btn" id="toggleBtn" title="選單">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
     </button>
 
@@ -95,7 +111,7 @@
 
         <div class="form-group">
             <label for="fontSize">字體大小 (px)</label>
-            <input type="range" id="fontSize" class="form-control" min="14" max="36" value="22" style="padding:0; background:transparent;">
+            <input type="range" id="fontSize" class="form-control" min="14" max="32" value="20" style="padding:0; background:transparent;">
         </div>
 
         <div class="form-group">
@@ -113,6 +129,11 @@
         </div>
 
         <button class="btn-submit" id="updateBanner">更新拖曳布條</button>
+    </div>
+
+    <div class="touch-hint">
+        <div><span>單指</span> 旋轉視角</div>
+        <div><span>雙指</span> 縮放/平移</div>
     </div>
 
     <script type="importmap">
@@ -135,7 +156,6 @@
         const scene = new THREE.Scene();
         scene.background = new THREE.Color(0x0b0b0e);
 
-        // 燈光
         const ambientLight = new THREE.AmbientLight(0xffffff, 1.2);
         scene.add(ambientLight);
 
@@ -146,9 +166,9 @@
         const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
         camera.position.set(0, 5, 15);
 
-        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
         renderer.setSize(window.innerWidth, window.innerHeight);
-        renderer.setPixelRatio(window.devicePixelRatio);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
         container.appendChild(renderer.domElement);
 
         const cssRenderer = new CSS3DRenderer();
@@ -158,12 +178,18 @@
         cssRenderer.domElement.style.pointerEvents = 'none';
         container.appendChild(cssRenderer.domElement);
 
+        // 針對手機觸控最佳化的 OrbitControls
         const controls = new OrbitControls(camera, renderer.domElement);
         controls.enableDamping = true;
-
-        // 加入三軸輔助線 (紅:X, 綠:Y, 藍:Z) 與大地格線
-        const axesHelper = new THREE.AxesHelper(10);
-        scene.add(axesHelper);
+        controls.dampingFactor = 0.05;
+        controls.rotateSpeed = 0.8;
+        controls.zoomSpeed = 1.0;
+        controls.panSpeed = 0.8;
+        // 確保手機雙指操作順暢
+        controls.touches = {
+            ONE: THREE.TOUCH.ROTATE,
+            TWO: THREE.TOUCH.DOLLY_PAN
+        };
 
         const gridHelper = new THREE.GridHelper(30, 30, 0x3b82f6, 0x222228);
         gridHelper.position.y = -2;
@@ -173,8 +199,8 @@
         const bannerElement = document.createElement('div');
         bannerElement.innerHTML = `
             <div style="display: flex; align-items: center; pointer-events: auto; cursor: pointer;" id="bannerWrapper">
-                <div style="width: 80px; height: 3px; background: rgba(255,255,255,0.7); box-shadow: 0 0 4px rgba(0,0,0,0.5);"></div>
-                <div id="bannerContent" style="padding: 12px 24px; border-radius: 6px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.2); font-family: 'Noto Sans TC', sans-serif; font-size: 22px; color: #ffffff; background-color: #e11d48; white-space: nowrap;">
+                <div style="width: 70px; height: 3px; background: rgba(255,255,255,0.7); box-shadow: 0 0 4px rgba(0,0,0,0.5);"></div>
+                <div id="bannerContent" style="padding: 10px 20px; border-radius: 6px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.2); font-family: 'Noto Sans TC', sans-serif; font-size: 20px; color: #ffffff; background-color: #e11d48; white-space: nowrap;">
                     飛機拖曳訊息測試 ✨
                 </div>
             </div>
@@ -191,7 +217,6 @@
             (gltf) => {
                 airplaneModel = gltf.scene;
 
-                // 強制套用材質修復（部分 GLB 匯出時如果材質是黑色或透明會直接看不見）
                 airplaneModel.traverse((child) => {
                     if (child.isMesh) {
                         child.castShadow = true;
@@ -202,7 +227,6 @@
                     }
                 });
 
-                // 自動置中與縮放
                 const box = new THREE.Box3().setFromObject(airplaneModel);
                 const center = box.getCenter(new THREE.Vector3());
                 const size = box.getSize(new THREE.Vector3());
@@ -216,18 +240,15 @@
                 const airplaneGroup = new THREE.Group();
                 airplaneGroup.add(airplaneModel);
 
-                // 將布條放置在飛機後方
                 bannerCSSObject.position.set(-3.5, 0, 0);
                 airplaneGroup.add(bannerCSSObject);
 
                 scene.add(airplaneGroup);
 
-                // 相機對準飛機
                 controls.target.set(0, 0, 0);
                 camera.position.set(6, 3, 10);
                 controls.update();
 
-                // 移除讀取遮罩
                 const loaderEl = document.getElementById('loading');
                 loaderEl.style.opacity = '0';
                 setTimeout(() => loaderEl.remove(), 500);
@@ -240,9 +261,10 @@
             }
         );
 
-        // UI 互動
-        document.getElementById('toggleBtn').addEventListener('click', () => document.getElementById('controlPanel').classList.toggle('collapsed'));
-        document.getElementById('closePanel').addEventListener('click', () => document.getElementById('controlPanel').classList.add('collapsed'));
+        // UI 互動控制
+        const controlPanel = document.getElementById('controlPanel');
+        document.getElementById('toggleBtn').addEventListener('click', () => controlPanel.classList.toggle('collapsed'));
+        document.getElementById('closePanel').addEventListener('click', () => controlPanel.classList.add('collapsed'));
 
         const bannerText = document.getElementById('bannerText');
         const fontSelect = document.getElementById('fontSelect');
@@ -257,9 +279,10 @@
             bannerContent.style.fontSize = fontSize.value + 'px';
             bannerContent.style.color = textColor.value;
             bannerContent.style.backgroundColor = bgColor.value;
+            controlPanel.classList.add('collapsed'); // 更新後自動收合面板以便觀看
         });
 
-        bannerContent.addEventListener('click', () => document.getElementById('controlPanel').classList.remove('collapsed'));
+        bannerContent.addEventListener('click', () => controlPanel.classList.remove('collapsed'));
 
         const clock = new THREE.Clock();
         function animate() {
@@ -274,6 +297,9 @@
             cssRenderer.render(scene, camera);
         }
         animate();
+
+        window.innerWidth = window.innerWidth;
+        window.innerHeight = window.innerHeight;
 
         window.addEventListener('resize', () => {
             camera.aspect = window.innerWidth / window.innerHeight;
