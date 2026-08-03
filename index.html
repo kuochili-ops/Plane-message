@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>3D 飛機訊息拖曳互動 - 模型保證顯示版</title>
+    <title>3D 飛機訊息拖曳互動 - 絕對可見強制版</title>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700&family=Roboto:wght@400;700&family=Orbitron:wght@500;700&family=Pacifico&display=swap" rel="stylesheet">
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
@@ -73,7 +73,7 @@
 
     <div id="loading">
         <div class="spinner"></div>
-        <p>正在載入 3D 模型與建立場景...</p>
+        <p>正在初始化 3D 空間與渲染引擎...</p>
     </div>
 
     <div id="canvas-container"></div>
@@ -155,20 +155,16 @@
         const scene = new THREE.Scene();
         scene.background = new THREE.Color(0x0b0b0e);
 
-        // 強力全方位燈光確保模型不背光變黑
-        const ambientLight = new THREE.AmbientLight(0xffffff, 2.0);
+        // 超強力全方位燈光
+        const ambientLight = new THREE.AmbientLight(0xffffff, 2.5);
         scene.add(ambientLight);
 
-        const dirLight1 = new THREE.DirectionalLight(0xffffff, 3.0);
-        dirLight1.position.set(20, 40, 20);
-        scene.add(dirLight1);
-
-        const dirLight2 = new THREE.DirectionalLight(0xffffff, 1.5);
-        dirLight2.position.set(-20, -20, -20);
-        scene.add(dirLight2);
+        const dirLight = new THREE.DirectionalLight(0xffffff, 3.5);
+        dirLight.position.set(10, 30, 20);
+        scene.add(dirLight);
 
         const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
-        camera.position.set(0, 5, 18);
+        camera.position.set(0, 5, 16);
 
         const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
         renderer.setSize(window.innerWidth, window.innerHeight);
@@ -193,35 +189,55 @@
             TWO: THREE.TOUCH.DOLLY_PAN
         };
 
-        // 建立 HTML 布條
+        // 建立主群組
+        const worldGroup = new THREE.Group();
+        scene.add(worldGroup);
+
+        // 1. 建立 HTML 拖曳布條
         const bannerElement = document.createElement('div');
         bannerElement.innerHTML = `
             <div style="display: flex; align-items: center; pointer-events: auto; cursor: pointer;" id="bannerWrapper">
-                <div style="width: 80px; height: 3px; background: rgba(255,255,255,0.8); box-shadow: 0 0 6px rgba(0,0,0,0.8);"></div>
-                <div id="bannerContent" style="padding: 12px 24px; border-radius: 6px; box-shadow: 0 10px 30px rgba(0,0,0,0.6); border: 1px solid rgba(255,255,255,0.3); font-family: 'Noto Sans TC', sans-serif; font-size: 20px; color: #ffffff; background-color: #e11d48; white-space: nowrap;">
+                <div style="width: 70px; height: 3px; background: rgba(255,255,255,0.9); box-shadow: 0 0 6px rgba(0,0,0,0.8);"></div>
+                <div id="bannerContent" style="padding: 12px 20px; border-radius: 6px; box-shadow: 0 10px 30px rgba(0,0,0,0.6); border: 1px solid rgba(255,255,255,0.3); font-family: 'Noto Sans TC', sans-serif; font-size: 20px; color: #ffffff; background-color: #e11d48; white-space: nowrap;">
                     飛機拖曳訊息測試 ✨
                 </div>
             </div>
         `;
         const bannerCSSObject = new CSS3DObject(bannerElement);
         bannerCSSObject.scale.set(0.08, 0.08, 0.08);
-
-        let airplaneGroup = new THREE.Group();
-        scene.add(airplaneGroup);
-
-        // 預先掛載布條，確保就算 GLB 讀取慢或路徑有問題，布條也會直接顯示在畫面正中心
         bannerCSSObject.position.set(-3.5, 0, 0);
-        airplaneGroup.add(bannerCSSObject);
+        worldGroup.add(bannerCSSObject);
 
-        let airplaneModel = null;
+        // 2. 建立強制保證看得見的備用幾何飛機（紅色雙翼造型），確保 GLB 讀取失敗或路徑不對時畫面絕對有飛機
+        const planeGroup = new THREE.Group();
+        
+        const bodyGeo = new THREE.CylinderGeometry(0.4, 0.4, 3.5, 16);
+        bodyGeo.rotateX(Math.PI / 2);
+        const bodyMat = new THREE.MeshStandardMaterial({ color: 0xdc2626, roughness: 0.3 });
+        const bodyMesh = new THREE.Mesh(bodyGeo, bodyMat);
+        planeGroup.add(bodyMesh);
+
+        const wingGeo = new THREE.BoxGeometry(4.5, 0.1, 1.2);
+        const wingMat = new THREE.MeshStandardMaterial({ color: 0xef4444, roughness: 0.3 });
+        const topWing = new THREE.Mesh(wingGeo, wingMat);
+        topWing.position.set(0, 0.6, 0);
+        planeGroup.add(topWing);
+
+        const botWing = new THREE.Mesh(wingGeo, wingMat);
+        botWing.position.set(0, -0.6, 0);
+        planeGroup.add(botWing);
+
+        // 預先將備用飛機加入場景群組
+        worldGroup.add(planeGroup);
+
+        // 3. 嘗試讀取您的 GLB 檔案，如果成功載入則替換掉備用飛機
         const loader = new GLTFLoader();
-
         loader.load(
             'stylized_ww1_plane.glb',
             (gltf) => {
-                airplaneModel = gltf.scene;
+                const glbModel = gltf.scene;
 
-                airplaneModel.traverse((child) => {
+                glbModel.traverse((child) => {
                     if (child.isMesh) {
                         child.castShadow = true;
                         child.receiveShadow = true;
@@ -232,43 +248,39 @@
                     }
                 });
 
-                // 自動置中與智慧縮放
-                const box = new THREE.Box3().setFromObject(airplaneModel);
+                // 自動置中與縮放
+                const box = new THREE.Box3().setFromObject(glbModel);
                 const center = box.getCenter(new THREE.Vector3());
                 const size = box.getSize(new THREE.Vector3());
-
-                airplaneModel.position.sub(center);
+                glbModel.position.sub(center);
 
                 const maxDim = Math.max(size.x, size.y, size.z);
-                const scaleFactor = 6.0 / (maxDim > 0 ? maxDim : 1);
-                airplaneModel.scale.multiplyScalar(scaleFactor);
+                const scaleFactor = 4.5 / (maxDim > 0 ? maxDim : 1);
+                glbModel.scale.multiplyScalar(scaleFactor);
 
-                airplaneGroup.add(airplaneModel);
+                // 移除備用幾何，換上真實的 GLB 模型
+                planeGroup.clear();
+                planeGroup.add(glbModel);
 
-                // 動態調整布條相對位置
-                bannerCSSObject.position.set(- (size.x * scaleFactor * 0.5) - 3, 0, 0);
-
-                // 隱藏讀取遮罩
-                const loaderEl = document.getElementById('loading');
-                loaderEl.style.opacity = '0';
-                setTimeout(() => loaderEl.remove(), 500);
+                // 依據模型大小精準對齊布條位置
+                bannerCSSObject.position.set(- (size.x * scaleFactor * 0.5) - 3.0, 0, 0);
+                
+                console.log('GLB 模型載入成功並已替換！');
             },
             undefined,
             (error) => {
-                console.warn('GLB 載入失敗或路徑錯誤，已啟用備用幾何圖形:', error);
-                
-                // 備用方案：如果 GLB 檔案讀取不到，自動產生一個精美代用模型（紅色飛機造型方塊+機翼），保證畫面一定有東西看！
-                const fallbackGeo = new THREE.BoxGeometry(3, 1, 1.5);
-                const fallbackMat = new THREE.MeshStandardMaterial({ color: 0xdc2626, roughness: 0.3 });
-                airplaneModel = new THREE.Mesh(fallbackGeo, fallbackMat);
-                airplaneGroup.add(airplaneModel);
+                console.warn('無法載入 GLB 檔案，已自動使用內建 3D 飛機模型替代:', error);
+            }
+        );
 
-                // 移除讀取遮罩並提示
-                const loaderEl = document.getElementById('loading');
+        // 移除載入遮罩
+        setTimeout(() => {
+            const loaderEl = document.getElementById('loading');
+            if (loaderEl) {
                 loaderEl.style.opacity = '0';
                 setTimeout(() => loaderEl.remove(), 500);
             }
-        );
+        }, 600);
 
         // UI 互動控制
         const controlPanel = document.getElementById('controlPanel');
@@ -297,9 +309,9 @@
         function animate() {
             requestAnimationFrame(animate);
             const t = clock.getElapsedTime();
-            if (airplaneGroup) {
-                airplaneGroup.position.y = Math.sin(t * 2) * 0.15;
-                airplaneGroup.rotation.z = Math.sin(t * 1.5) * 0.03;
+            if (worldGroup) {
+                worldGroup.position.y = Math.sin(t * 2) * 0.15;
+                worldGroup.rotation.z = Math.sin(t * 1.5) * 0.03;
             }
             controls.update();
             renderer.render(scene, camera);
