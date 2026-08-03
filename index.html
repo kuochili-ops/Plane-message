@@ -1,0 +1,530 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D 飛機訊息拖曳互動展示 - Three.js 整合版</title>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700&family=Roboto:wght@400;700&family=Orbitron:wght@500;700&family=Pacifico&display=swap" rel="stylesheet">
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        body {
+            font-family: 'Noto Sans TC', sans-serif;
+            background-color: #121216;
+            color: #e0e0e6;
+            overflow: hidden;
+            width: 100vw;
+            height: 100vh;
+        }
+
+        /* 3D Canvas 區域 */
+        #canvas-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+        }
+
+        /* 頂部導覽列/標題 */
+        .header-bar {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            z-index: 10;
+            background: rgba(18, 18, 22, 0.75);
+            backdrop-filter: blur(10px);
+            padding: 12px 20px;
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+            pointer-events: auto;
+        }
+        .header-bar h1 {
+            font-size: 1.1rem;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            color: #fff;
+        }
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            background-color: #00ff88;
+            border-radius: 50%;
+            box-shadow: 0 0 8px #00ff88;
+        }
+
+        /* 側邊控制面板 */
+        .control-panel {
+            position: absolute;
+            top: 85px;
+            left: 20px;
+            width: 340px;
+            z-index: 10;
+            background: rgba(18, 18, 22, 0.85);
+            backdrop-filter: blur(15px);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            border-radius: 16px;
+            padding: 24px;
+            box-shadow: 0 16px 40px rgba(0,0,0,0.4);
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease;
+            pointer-events: auto;
+        }
+        .control-panel.collapsed {
+            transform: translateX(-370px);
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        /* 收合按鈕 */
+        .toggle-btn {
+            position: absolute;
+            top: 85px;
+            left: 20px;
+            z-index: 9;
+            background: rgba(18, 18, 22, 0.85);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            color: #fff;
+            width: 44px;
+            height: 44px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+            transition: all 0.2s ease;
+            pointer-events: auto;
+        }
+        .toggle-btn:hover {
+            background: rgba(30, 30, 40, 0.95);
+            border-color: rgba(255, 255, 255, 0.3);
+        }
+
+        .panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .panel-header h2 {
+            font-size: 1rem;
+            color: #fff;
+            font-weight: 700;
+        }
+        .close-panel {
+            background: none;
+            border: none;
+            color: #8a8a9e;
+            cursor: pointer;
+            font-size: 1.2rem;
+            transition: color 0.2s;
+        }
+        .close-panel:hover {
+            color: #fff;
+        }
+
+        /* 表單控制項 */
+        .form-group {
+            margin-bottom: 16px;
+        }
+        .form-group label {
+            display: block;
+            font-size: 0.85rem;
+            color: #a0a0b2;
+            margin-bottom: 6px;
+            font-weight: 500;
+        }
+        .form-control {
+            width: 100%;
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            padding: 10px 14px;
+            color: #fff;
+            font-size: 0.9rem;
+            outline: none;
+            transition: all 0.2s;
+        }
+        .form-control:focus {
+            border-color: #3b82f6;
+            background: rgba(255, 255, 255, 0.09);
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+        }
+        textarea.form-control {
+            resize: vertical;
+            min-height: 70px;
+        }
+        select.form-control {
+            cursor: pointer;
+        }
+
+        .color-pickers {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+        .color-picker-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(255, 255, 255, 0.06);
+            padding: 6px 10px;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .color-picker-wrapper input[type="color"] {
+            -webkit-appearance: none;
+            border: none;
+            width: 24px;
+            height: 24px;
+            border-radius: 4px;
+            cursor: pointer;
+            background: none;
+        }
+        .color-picker-wrapper input[type="color"]::-webkit-color-swatch-wrapper {
+            padding: 0;
+        }
+        .color-picker-wrapper input[type="color"]::-webkit-color-swatch {
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 4px;
+        }
+        .color-picker-wrapper span {
+            font-size: 0.8rem;
+            color: #ccc;
+        }
+
+        .btn-submit {
+            width: 100%;
+            background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+            color: white;
+            border: none;
+            padding: 12px;
+            border-radius: 8px;
+            font-weight: 700;
+            font-size: 0.95rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+            margin-top: 8px;
+        }
+        .btn-submit:hover {
+            background: linear-gradient(135deg, #2563eb, #1e40af);
+            box-shadow: 0 6px 16px rgba(59, 130, 246, 0.4);
+            transform: translateY(-1px);
+        }
+
+        /* 底部提示手勢面板 */
+        .gesture-hint {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 10;
+            background: rgba(18, 18, 22, 0.75);
+            backdrop-filter: blur(10px);
+            padding: 10px 20px;
+            border-radius: 30px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            gap: 20px;
+            font-size: 0.8rem;
+            color: #a0a0b2;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+            pointer-events: auto;
+        }
+        .gesture-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .gesture-item kbd {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 2px 6px;
+            border-radius: 4px;
+            color: #fff;
+            font-family: inherit;
+        }
+
+        /* 載入中遮罩 */
+        #loading {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #121216;
+            z-index: 100;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            gap: 16px;
+            transition: opacity 0.5s ease;
+        }
+        .spinner {
+            width: 48px;
+            height: 48px;
+            border: 4px solid rgba(255,255,255,0.1);
+            border-top-color: #3b82f6;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        #loading p {
+            color: #a0a0b2;
+            font-size: 0.95rem;
+            letter-spacing: 1px;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- 載入動畫 -->
+    <div id="loading">
+        <div class="spinner"></div>
+        <p>正在載入 3D 飛機模型 (stylized_ww1_plane.glb)...</p>
+    </div>
+
+    <!-- Three.js Canvas 容器 -->
+    <div id="canvas-container"></div>
+
+    <!-- 頂部標題列 -->
+    <div class="header-bar">
+        <div class="status-dot"></div>
+        <h1>SkyBanner 3D - 實體 GLB 模型互動版</h1>
+    </div>
+
+    <!-- 收合按鈕 -->
+    <button class="toggle-btn" id="toggleBtn" title="開啟/收合設定面板">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+    </button>
+
+    <!-- 側邊設定面板 -->
+    <div class="control-panel" id="controlPanel">
+        <div class="panel-header">
+            <h2>布條內容設定</h2>
+            <button class="close-panel" id="closePanel">&times;</button>
+        </div>
+        
+        <div class="form-group">
+            <label for="bannerText">顯示訊息文字</label>
+            <textarea id="bannerText" class="form-control" placeholder="輸入想拖曳的文字...">飛機拖曳訊息測試 ✨</textarea>
+        </div>
+
+        <div class="form-group">
+            <label for="fontSelect">字型樣式</label>
+            <select id="fontSelect" class="form-control">
+                <option value="'Noto Sans TC', sans-serif">思源黑體 (Noto Sans TC)</option>
+                <option value="'Roboto', sans-serif">Roboto (現代英文)</option>
+                <option value="'Orbitron', sans-serif">Orbitron (科技未來風)</option>
+                <option value="'Pacifico', cursive">Pacifico (手寫藝術風)</option>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label for="fontSize">字體大小 (px)</label>
+            <input type="range" id="fontSize" class="form-control" min="14" max="36" value="22" style="padding: 0; background: transparent;">
+        </div>
+
+        <div class="form-group">
+            <label>色彩配置</label>
+            <div class="color-pickers">
+                <div class="color-picker-wrapper">
+                    <input type="color" id="textColor" value="#ffffff">
+                    <span>文字顏色</span>
+                </div>
+                <div class="color-picker-wrapper">
+                    <input type="color" id="bgColor" value="#e11d48">
+                    <span>布條底色</span>
+                </div>
+            </div>
+        </div>
+
+        <button class="btn-submit" id="updateBanner">更新拖曳布條</button>
+    </div>
+
+    <!-- 底部手勢提示 -->
+    <div class="gesture-hint">
+        <div class="gesture-item"><kbd>滑鼠左鍵拖曳</kbd> 旋轉視角</div>
+        <div class="gesture-item"><kbd>滾輪</kbd> 縮放畫面</div>
+        <div class="gesture-item"><kbd>右鍵拖曳</kbd> 平移</div>
+    </div>
+
+    <!-- 導入 Three.js 及其控制項與載入器 (ES Modules) -->
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+                "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+            }
+        }
+    </script>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+        import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+        import { CSS3DRenderer, CSS3DObject } from 'three/addons/renderers/CSS3DRenderer.js';
+
+        // 1. 初始化場景、相機、雙渲染器
+        const container = document.getElementById('canvas-container');
+        
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x121216);
+
+        // 產生天空漸層背景裝飾
+        const hemiLight = new THREE.HemisphereLight(0xffffff, 0x444444, 1.5);
+        hemiLight.position.set(0, 200, 0);
+        scene.add(hemiLight);
+
+        const dirLight = new THREE.DirectionalLight(0xffffff, 2);
+        dirLight.position.set(50, 100, 50);
+        dirLight.castShadow = true;
+        scene.add(dirLight);
+
+        const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 1, 1000);
+        camera.position.set(0, 5, 20);
+
+        // WebGL 渲染器 (渲染 3D 飛機)
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(window.devicePixelRatio);
+        renderer.shadowMap.enabled = true;
+        container.appendChild(renderer.domElement);
+
+        // CSS3D 渲染器 (用於將 HTML 布條精確對齊並渲染在 3D 空間中)
+        const cssRenderer = new CSS3DRenderer();
+        cssRenderer.setSize(window.innerWidth, window.innerHeight);
+        cssRenderer.domElement.style.position = 'absolute';
+        cssRenderer.domElement.style.top = '0';
+        cssRenderer.domElement.style.pointerEvents = 'none';
+        container.appendChild(cssRenderer.domElement);
+
+        // 視角控制器
+        const controls = new OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.05;
+
+        // 2. 建立動態 HTML 布條 DOM 物件
+        const bannerElement = document.createElement('div');
+        bannerElement.id = 'dynamicBanner';
+        bannerElement.innerHTML = `
+            <div style="display: flex; align-items: center; pointer-events: auto; cursor: pointer;" id="bannerWrapper">
+                <div style="width: 80px; height: 3px; background: rgba(255,255,255,0.7); box-shadow: 0 0 4px rgba(0,0,0,0.5);"></div>
+                <div id="bannerContent" style="padding: 12px 24px; border-radius: 6px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.2); font-family: 'Noto Sans TC', sans-serif; font-size: 22px; color: #ffffff; background-color: #e11d48; white-space: nowrap;">
+                    飛機拖曳訊息測試 ✨
+                </div>
+            </div>
+        `;
+        
+        const bannerCSSObject = new CSS3DObject(bannerElement);
+        // 設定布條在飛機後方的位置 (依據 GLB 模型尺寸調整相對座標)
+        bannerCSSObject.position.set(-7, 0, 0);
+        bannerCSSObject.scale.set(0.08, 0.08, 0.08); // 縮放 CSS3D 比例符合 3D 場景
+        scene.add(bannerCSSObject);
+
+        // 3. 載入同目錄下的 stylized_ww1_plane.glb 模型
+        let airplaneModel = null;
+        const loader = new GLTFLoader();
+        
+        loader.load(
+            'stylized_ww1_plane.glb',
+            (gltf) => {
+                airplaneModel = gltf.scene;
+                airplaneModel.scale.set(1.5, 1.5, 1.5); // 依模型實際大小調整
+                airplaneModel.position.set(0, 0, 0);
+                scene.add(airplaneModel);
+
+                // 隱藏載入遮罩
+                const loaderEl = document.getElementById('loading');
+                loaderEl.style.opacity = '0';
+                setTimeout(() => loaderEl.remove(), 500);
+            },
+            (xhr) => {
+                const percent = Math.round((xhr.loaded / xhr.total) * 100);
+                const pEl = document.querySelector('#loading p');
+                if (xhr.total) {
+                    pEl.textContent = `正在載入 3D 模型... (${percent}%)`;
+                }
+            },
+            (error) => {
+                console.error('載入 GLB 模型發生錯誤：', error);
+                const pEl = document.querySelector('#loading p');
+                pEl.innerHTML = `無法載入 <b>stylized_ww1_plane.glb</b>。<br><span style="color:#ef4444; font-size:0.85rem;">請確認檔案是否與 index.html 放在同一目錄，或透過本地伺服器 (如 Live Server) 執行。</span>`;
+                document.querySelector('.spinner').style.display = 'none';
+            }
+        );
+
+        // 4. UI 互動與即時更新邏輯
+        const controlPanel = document.getElementById('controlPanel');
+        const toggleBtn = document.getElementById('toggleBtn');
+        const closePanel = document.getElementById('closePanel');
+
+        toggleBtn.addEventListener('click', () => controlPanel.classList.toggle('collapsed'));
+        closePanel.addEventListener('click', () => controlPanel.classList.add('collapsed'));
+
+        const bannerText = document.getElementById('bannerText');
+        const fontSelect = document.getElementById('fontSelect');
+        const fontSize = document.getElementById('fontSize');
+        const textColor = document.getElementById('textColor');
+        const bgColor = document.getElementById('bgColor');
+        const updateBtn = document.getElementById('updateBanner');
+        const bannerContent = document.getElementById('bannerContent');
+
+        function applyBannerChanges() {
+            const text = bannerText.value || 'SkyBanner';
+            bannerContent.textContent = text;
+            bannerContent.style.fontFamily = fontSelect.value;
+            bannerContent.style.fontSize = fontSize.value + 'px';
+            bannerContent.style.color = textColor.value;
+            bannerContent.style.backgroundColor = bgColor.value;
+        }
+
+        updateBtn.addEventListener('click', applyBannerChanges);
+        bannerContent.addEventListener('click', () => controlPanel.classList.remove('collapsed'));
+
+        // 5. 動畫循環 (讓飛機產生自然的飛行上下浮動與輕微擺動)
+        const clock = new THREE.Clock();
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            const elapsedTime = clock.getElapsedTime();
+
+            if (airplaneModel) {
+                // 飛機飛行懸浮動畫
+                airplaneModel.position.y = Math.sin(elapsedTime * 2) * 0.3;
+                airplaneModel.rotation.z = Math.sin(elapsedTime * 1.5) * 0.05;
+                airplaneModel.rotation.x = Math.cos(elapsedTime * 2) * 0.05;
+            }
+
+            controls.update();
+            renderer.render(scene, camera);
+            cssRenderer.render(scene, camera);
+        }
+
+        animate();
+
+        // 視窗縮放適應
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            cssRenderer.setSize(window.innerWidth, window.innerHeight);
+        });
+    </script>
+</body>
+</html>
